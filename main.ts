@@ -1,24 +1,152 @@
+let tileSize = 16;
+const COL_TILES = 500;
+const ROW_TILES = 500;
+
+const generationText = document.getElementById("generation");
+const fastButton = document.getElementById("faster");
+const slowButton = document.getElementById("slower");
+const clearButton = document.getElementById("clear");
+const runButton = document.getElementById("run");
+const randomButton = document.getElementById("randomize");
+const zoomInButton = document.getElementById("zoomIn");
+const zoomOutButton = document.getElementById("zoomOut");
+const upButton = document.getElementById("up");
+const downButton = document.getElementById("down");
+const leftButton = document.getElementById("left");
+const rightButton = document.getElementById("right");
+
 const canvas = document.querySelector("canvas")!;
 const ctx = canvas.getContext("2d")!;
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
 let currentGrid: Array<Array<boolean>> = [];
+let lastUpdate = 0;
 
-const TILE_SIZE = 16;
-const COL_TILES = Math.floor(canvas.width / TILE_SIZE);
-const ROW_TILES = Math.floor(canvas.height / TILE_SIZE);
+let running = false;
+let creativeMode = true;
+
+let speed = 1;
+let generationCount = 0;
+
+let offsetX = -(COL_TILES / 2) * tileSize;
+let offsetY = -(ROW_TILES / 2) * tileSize;
+
+slowButton?.addEventListener("click", (): void => {
+  speed *= 0.5;
+  speed = Math.max(0.25, Math.min(4, speed));
+});
+
+randomButton?.addEventListener("click", () => {
+  running = false;
+  creativeMode = true;
+  if (running) {
+    runButton!.textContent = "Stop";
+  } else {
+    runButton!.textContent = "Run";
+  }
+  generationCount = 0;
+  generationText!.textContent = `Gen: ${generationCount}`;
+  randomizeLife();
+});
+
+fastButton?.addEventListener("click", (): void => {
+  speed *= 2;
+  speed = Math.max(0.25, Math.min(4, speed));
+});
+
+runButton?.addEventListener("click", () => {
+  running = !running;
+  creativeMode = !creativeMode;
+  if (running) {
+    runButton.textContent = "Stop";
+  } else {
+    runButton.textContent = "Run";
+  }
+});
+
+clearButton?.addEventListener("click", () => {
+  for (let i = 0; i < ROW_TILES; ++i) {
+    for (let j = 0; j < COL_TILES; ++j) {
+      currentGrid[i][j] = false;
+    }
+  }
+  running = false;
+  creativeMode = true;
+  if (running) {
+    runButton!.textContent = "Stop";
+  } else {
+    runButton!.textContent = "Run";
+  }
+  generationCount = 0;
+  generationText!.textContent = `Gen: ${generationCount}`;
+});
+
+zoomInButton?.addEventListener("click", () => {
+  tileSize *= 1.2;
+  tileSize = Math.max(1.6, Math.min(36, tileSize));
+  offsetX = -(COL_TILES / 2) * tileSize;
+  offsetY = -(ROW_TILES / 2) * tileSize;
+  console.log(tileSize);
+});
+
+zoomOutButton?.addEventListener("click", () => {
+  tileSize /= 1.2;
+  tileSize = Math.max(1.6, Math.min(36, tileSize));
+  offsetX = -(COL_TILES / 2) * tileSize;
+  offsetY = -(ROW_TILES / 2) * tileSize;
+
+  console.log(tileSize);
+});
+
+leftButton?.addEventListener("click", () => {
+  offsetX += tileSize * 4;
+});
+
+rightButton?.addEventListener("click", () => {
+  offsetX -= tileSize * 4;
+});
+
+upButton?.addEventListener("click", () => {
+  offsetY += tileSize * 4;
+});
+
+downButton?.addEventListener("click", () => {
+  offsetY -= tileSize * 4;
+});
+
+window.addEventListener("click", (event) => {
+  const rect = canvas.getBoundingClientRect();
+
+  const x = Math.floor((event.clientX - rect.left) / tileSize);
+  const y = Math.floor((event.clientY - rect.top) / tileSize);
+  if (x >= 0 && x < COL_TILES && y >= 0 && y < ROW_TILES) {
+    console.log(x, y, currentGrid[y]?.[x]);
+    currentGrid[y][x] = !currentGrid[y][x];
+    generationCount = 0;
+
+    generationText!.textContent = `Gen: ${generationCount}`;
+  }
+});
+
+window.addEventListener("keydown", (e) => {
+  if (e.code === "Space") {
+    running = !running;
+    creativeMode = !creativeMode;
+  }
+
+  if (e.code === "ArrowUp") speed *= 2;
+  if (e.code === "ArrowDown") speed *= 0.5;
+  speed = Math.max(0.25, Math.min(4, speed));
+
+  if (e.code == "add") console.log("+++");
+  if (e.code == "KeyR") randomizeLife();
+});
 
 for (let i = 0; i < ROW_TILES; ++i) {
   currentGrid.push([]);
   for (let j = 0; j < COL_TILES; ++j) currentGrid[i].push(false);
 }
-
-currentGrid[3][2] = true;
-currentGrid[3][3] = true;
-currentGrid[3][4] = true;
-
-const generationText = document.getElementById("generation");
 
 function updateGrid(): Array<Array<boolean>> {
   let nextGrid: Array<Array<boolean>> = [];
@@ -59,16 +187,17 @@ const getNeighbours = (i: number, j: number): number => {
   return sum;
 };
 
-for (let i = 0; i < ROW_TILES; ++i) {
-  console.log(currentGrid[i]);
-}
-
 function draw(): void {
   for (let i = 0; i < ROW_TILES; ++i) {
     for (let j = 0; j < COL_TILES; ++j) {
       if (currentGrid[i][j]) {
         ctx.fillStyle = "#f24c63";
-        ctx.fillRect(j * TILE_SIZE, i * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+        ctx.fillRect(
+          j * tileSize + offsetX,
+          i * tileSize + offsetY,
+          tileSize,
+          tileSize,
+        );
       }
     }
   }
@@ -81,77 +210,6 @@ function update(): void {
   generationText!.textContent = `Gen: ${generationCount}`;
 }
 
-let lastUpdate = 0;
-
-let running = false;
-let creativeMode = true;
-
-window.addEventListener("click", (event) => {
-  const rect = canvas.getBoundingClientRect();
-
-  const x = Math.floor((event.clientX - rect.left) / TILE_SIZE);
-  const y = Math.floor((event.clientY - rect.top) / TILE_SIZE);
-  if (x >= 0 && x < COL_TILES && y >= 0 && y < ROW_TILES) {
-    console.log(x, y, currentGrid[y]?.[x]);
-    currentGrid[y][x] = !currentGrid[y][x];
-    generationCount = 0;
-
-    generationText!.textContent = `Gen: ${generationCount}`;
-  }
-});
-
-let speed = 1;
-let generationCount = 0;
-
-window.addEventListener("keydown", (e) => {
-  if (e.code === "Space") {
-    running = !running;
-    creativeMode = !creativeMode;
-  }
-
-  if (e.code === "ArrowUp") speed *= 2;
-  if (e.code === "ArrowDown") speed *= 0.5;
-  speed = Math.max(0.25, Math.min(4, speed));
-
-  if (e.code == "add") console.log("+++");
-  if (e.code == "KeyR") randomizeLife();
-});
-
-const fastButton = document.getElementById("faster");
-fastButton?.addEventListener("click", (): void => {
-  speed *= 2;
-});
-
-const slowButton = document.getElementById("slower");
-slowButton?.addEventListener("click", (): void => {
-  speed *= 0.5;
-});
-
-const randomButton = document.getElementById("randomize");
-randomButton?.addEventListener("click", () => randomizeLife());
-
-const runButton = document.getElementById("run");
-runButton?.addEventListener("click", () => {
-  running = !running;
-  creativeMode = !creativeMode;
-  if (running) {
-    runButton.textContent = "Stop";
-  } else {
-    runButton.textContent = "Run";
-  }
-});
-
-const clearButton = document.getElementById("clear");
-clearButton?.addEventListener("click", () => {
-  for (let i = 0; i < ROW_TILES; ++i) {
-    for (let j = 0; j < COL_TILES; ++j) {
-      currentGrid[i][j] = false;
-    }
-  }
-  generationCount = 0;
-  generationText!.textContent = `Gen: ${generationCount}`;
-});
-
 function randomizeLife(): void {
   for (let i = 0; i < ROW_TILES; ++i) {
     for (let j = 0; j < COL_TILES; ++j) currentGrid[i][j] = Math.random() < 0.3;
@@ -159,22 +217,23 @@ function randomizeLife(): void {
 }
 
 function drawGrid() {
+  //Vertical grid lines
   for (let i = 1; i <= COL_TILES; ++i) {
     ctx.beginPath();
-    ctx.moveTo(i * TILE_SIZE, 0);
-    ctx.lineTo(i * TILE_SIZE, canvas.height);
+    ctx.moveTo(i * tileSize + offsetX, 0);
+    ctx.lineTo(i * tileSize + offsetX, canvas.height);
     ctx.strokeStyle = "#b0a0b3";
     ctx.stroke();
   }
+  //horizontal grid lines
   for (let i = 1; i <= ROW_TILES; ++i) {
     ctx.beginPath();
-    ctx.moveTo(0, i * TILE_SIZE);
-    ctx.lineTo(canvas.width, i * TILE_SIZE);
+    ctx.moveTo(0, i * tileSize + offsetY);
+    ctx.lineTo(canvas.width, i * tileSize + offsetY);
     ctx.strokeStyle = "#b0a0b3";
     ctx.stroke();
   }
 }
-console.log(generationCount);
 
 function animate(timestamp: number) {
   requestAnimationFrame(animate);
@@ -183,7 +242,7 @@ function animate(timestamp: number) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     draw();
-    drawGrid();
+    if (tileSize >= 12) drawGrid();
   }
 
   if (timestamp - lastUpdate >= 200 / speed) {
@@ -191,7 +250,7 @@ function animate(timestamp: number) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     update();
     draw();
-    drawGrid();
+    if (tileSize >= 12) drawGrid();
     lastUpdate = timestamp;
   }
 }
