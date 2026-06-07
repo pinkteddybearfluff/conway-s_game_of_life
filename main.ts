@@ -18,6 +18,8 @@ currentGrid[3][2] = true;
 currentGrid[3][3] = true;
 currentGrid[3][4] = true;
 
+const generationText = document.getElementById("generation");
+
 function updateGrid(): Array<Array<boolean>> {
   let nextGrid: Array<Array<boolean>> = [];
 
@@ -65,7 +67,7 @@ function draw(): void {
   for (let i = 0; i < ROW_TILES; ++i) {
     for (let j = 0; j < COL_TILES; ++j) {
       if (currentGrid[i][j]) {
-        ctx.fillStyle = "white";
+        ctx.fillStyle = "#f24c63";
         ctx.fillRect(j * TILE_SIZE, i * TILE_SIZE, TILE_SIZE, TILE_SIZE);
       }
     }
@@ -75,6 +77,8 @@ function draw(): void {
 function update(): void {
   let newGrid = updateGrid();
   currentGrid = newGrid.map((rows) => [...rows]);
+  ++generationCount;
+  generationText!.textContent = `Gen: ${generationCount}`;
 }
 
 let lastUpdate = 0;
@@ -87,11 +91,17 @@ window.addEventListener("click", (event) => {
 
   const x = Math.floor((event.clientX - rect.left) / TILE_SIZE);
   const y = Math.floor((event.clientY - rect.top) / TILE_SIZE);
-  console.log(x, y, currentGrid[y]?.[x]);
-  currentGrid[y][x] = !currentGrid[y][x];
+  if (x >= 0 && x < COL_TILES && y >= 0 && y < ROW_TILES) {
+    console.log(x, y, currentGrid[y]?.[x]);
+    currentGrid[y][x] = !currentGrid[y][x];
+    generationCount = 0;
+
+    generationText!.textContent = `Gen: ${generationCount}`;
+  }
 });
 
 let speed = 1;
+let generationCount = 0;
 
 window.addEventListener("keydown", (e) => {
   if (e.code === "Space") {
@@ -102,24 +112,69 @@ window.addEventListener("keydown", (e) => {
   if (e.code === "ArrowUp") speed *= 2;
   if (e.code === "ArrowDown") speed *= 0.5;
   speed = Math.max(0.25, Math.min(4, speed));
+
+  if (e.code == "add") console.log("+++");
+  if (e.code == "KeyR") randomizeLife();
 });
+
+const fastButton = document.getElementById("faster");
+fastButton?.addEventListener("click", (): void => {
+  speed *= 2;
+});
+
+const slowButton = document.getElementById("slower");
+slowButton?.addEventListener("click", (): void => {
+  speed *= 0.5;
+});
+
+const randomButton = document.getElementById("randomize");
+randomButton?.addEventListener("click", () => randomizeLife());
+
+const runButton = document.getElementById("run");
+runButton?.addEventListener("click", () => {
+  running = !running;
+  creativeMode = !creativeMode;
+  if (running) {
+    runButton.textContent = "Stop";
+  } else {
+    runButton.textContent = "Run";
+  }
+});
+
+const clearButton = document.getElementById("clear");
+clearButton?.addEventListener("click", () => {
+  for (let i = 0; i < ROW_TILES; ++i) {
+    for (let j = 0; j < COL_TILES; ++j) {
+      currentGrid[i][j] = false;
+    }
+  }
+  generationCount = 0;
+  generationText!.textContent = `Gen: ${generationCount}`;
+});
+
+function randomizeLife(): void {
+  for (let i = 0; i < ROW_TILES; ++i) {
+    for (let j = 0; j < COL_TILES; ++j) currentGrid[i][j] = Math.random() < 0.3;
+  }
+}
 
 function drawGrid() {
   for (let i = 1; i <= COL_TILES; ++i) {
     ctx.beginPath();
     ctx.moveTo(i * TILE_SIZE, 0);
     ctx.lineTo(i * TILE_SIZE, canvas.height);
-    ctx.strokeStyle = "white";
+    ctx.strokeStyle = "#b0a0b3";
     ctx.stroke();
   }
   for (let i = 1; i <= ROW_TILES; ++i) {
     ctx.beginPath();
     ctx.moveTo(0, i * TILE_SIZE);
     ctx.lineTo(canvas.width, i * TILE_SIZE);
-    ctx.strokeStyle = "white";
+    ctx.strokeStyle = "#b0a0b3";
     ctx.stroke();
   }
 }
+console.log(generationCount);
 
 function animate(timestamp: number) {
   requestAnimationFrame(animate);
@@ -127,16 +182,16 @@ function animate(timestamp: number) {
   if (creativeMode) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    drawGrid();
     draw();
+    drawGrid();
   }
 
   if (timestamp - lastUpdate >= 200 / speed) {
     if (!running) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    drawGrid();
     update();
     draw();
+    drawGrid();
     lastUpdate = timestamp;
   }
 }
